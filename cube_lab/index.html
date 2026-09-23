@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Jev · 魔方实验室</title><link rel="stylesheet" href="/style.css"><link rel="icon" href="data:,"></head>
+<body>
+<header><a class="brand" href="/">jev<span class="brand-dot">.</span><span class="brand-label">CUBE LAB</span></a><span class="connection" id="connection">正在连接实验室</span></header>
+<main>
+<div class="heading"><div><p class="eyebrow">自主决策实验 / 001</p><h1>它能自己还原魔方吗？</h1><p class="intro">给 Jev 当前状态与此前轨迹，观察它的下一步。</p></div><div class="experiment-tag">3 × 3 × 3 <span>18 种基础动作</span></div></div>
+<section class="workspace" aria-label="魔方实验台">
+<div class="cube-panel">
+<div class="panel-top"><span class="eyebrow">LIVE CUBE</span><span id="phase" class="pill" role="status" aria-live="polite">加载中</span></div>
+<div id="cube" aria-label="三阶魔方，可拖动改变观察角度"></div>
+<p class="orbit-hint">拖动旋转视角 <span>·</span> 观察角度不会改变魔方状态</p>
+<div class="metrics"><div><span>已执行</span><strong id="step-count">00 <small>/ 30 步</small></strong></div><div><span>判断总耗时</span><strong id="total-time">—</strong></div><div><span>最近动作</span><strong id="last-move">—</strong></div></div>
+<div class="controls"><label>打乱步数 <select id="depth"><option value="1">1 步</option><option value="2">2 步</option><option value="3" selected>3 步</option><option value="5">5 步</option><option value="10">10 步</option><option value="20">20 步</option></select></label><label>最多执行 <select id="limit"><option value="10">10 步</option><option value="30" selected>30 步</option><option value="50">50 步</option></select></label><button id="new" disabled>重新打乱</button></div>
+<div class="actions"><button id="auto" class="primary" disabled>开始自动实验 <span>→</span></button><button id="step" disabled>执行一步</button><button id="pause" disabled>暂停</button><button id="replay" disabled>重放</button></div>
+<p id="message" class="message" role="status" aria-live="polite">正在加载魔方组件…</p>
+</div>
+<aside class="decision-panel"><div class="panel-top"><span class="eyebrow">JEV'S NEXT MOVE</span><span id="model">—</span></div>
+<div class="decision-summary"><div><span class="muted">选中动作</span><strong id="choice">—</strong></div><div class="confidence"><span class="muted">分布置信度</span><strong id="confidence">—</strong></div></div>
+<div class="distribution-heading"><span>候选动作概率</span><span id="latency">等待判断</span></div><div id="probabilities" class="probabilities"></div>
+<p class="note">概率表示模型对动作的偏好，不代表还原成功率。允许连续同面转动，过滤立即逆操作和返回已见状态的动作；Jev 看不到打乱步骤，也没有求解器提示。</p>
+<details><summary>查看本次决策输入</summary><pre id="input">执行第一步后显示。</pre></details>
+</aside>
+</section>
+<section class="history-section"><div class="section-heading"><h2>操作轨迹 <span id="history-count">0</span></h2><span class="muted">点击已执行动作，回看当时的判断</span></div><div id="timeline" class="timeline"><p class="muted">每一个选择，都会留在这里。</p></div></section>
+<section class="results-section"><div class="section-heading"><h2>实验记录</h2><button id="export" class="text-button">导出 JSON ↗</button></div><p id="stats" class="muted">还没有完成的实验。从简单状态开始试试。</p><div class="table-wrap"><table><thead><tr><th>开始时间</th><th>打乱步数</th><th>结果</th><th>执行步数</th><th>判断耗时</th><th>模型</th></tr></thead><tbody id="results"></tbody></table></div><p class="note">按打乱步数分别统计；打乱步数不等于最短解距离。记录仅保存在当前浏览器，保留最近 100 轮。</p></section>
+<footer><span>Jev decides. The cube responds.</span><span>状态模拟 cubejs / 动画 cubing.js</span></footer>
+</main>
+<script type="module" src="/dist/app.js"></script>
+<script>window.addEventListener('error',e=>{if(e.target?.tagName==='SCRIPT')document.getElementById('message').textContent='页面组件加载失败，请刷新或检查服务。'},true);</script>
+</body></html>

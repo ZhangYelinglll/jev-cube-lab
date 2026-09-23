@@ -1,0 +1,9 @@
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+node_modules/
+cube_lab/dist/
+data/
+*.log
