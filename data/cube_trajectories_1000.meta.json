@@ -1,0 +1,19 @@
+{
+  "count": 1000,
+  "retained_source_states": 323,
+  "added_states": 677,
+  "depth_counts": {
+    "1": 18,
+    "2": 167,
+    "3": 815
+  },
+  "seed": 20260924,
+  "eligible_new_depth3_states": 1988,
+  "heldout_starts": 332,
+  "training_heldout_overlap": 0,
+  "trajectory_heldout_overlap": 0,
+  "solver": "Exact depth-3 BFS distances with shortest continuation through original training states",
+  "sampling_scope": "New depth-3 starts are selected to have an optimal path through the original 323-state set; not uniform over every depth-3 state.",
+  "evaluation": "Use cube_eval.py --data data/cube_trajectories_expanded.jsonl --seed 17 for BOTH old and new checkpoints. This freezes the same 332 held-out starts and original 323-state diagnostic pool.",
+  "validation": "All 1000 solutions replay to solved in exact shortest distance; all intermediate states supervised; original rows unchanged."
+}

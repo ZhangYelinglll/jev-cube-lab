@@ -1,37 +1,140 @@
-# Jev 魔方实验室
+# Jev Cube Lab · 魔方决策与学习实验
 
-Jev 根据六面状态逐步选择 18 个面转动作之一。网页展示真实返回概率、置信度、旋转动画、操作轨迹和按打乱步数分组的实验记录。没有求解器或隐式接管；允许连续同面转动（如 U → U）；每步排除立即逆操作，并用状态模拟预演，排除返回本轮已出现状态的动作；若所有候选都会重复，则仅保留立即逆操作限制，继续运行，其余动作由 Jev 自主选择；模型看不到打乱步骤。每次请求都会附带本轮起始状态、此前每一步的动作和执行后状态，作为决策背景。
+探索模型能否根据三阶魔方的当前状态选择动作，并通过监督学习和强化学习提高还原能力。
 
-## 运行
+项目包含两个独立部分：**Jev API 网页实验**展示动作概率、轨迹和旋转动画；**Qwen3.5-0.8B 本地训练实验**使用 18 类动作头，支持监督学习、闭环评估和 GRPO 小实验。目前本地训练模型尚未接入网页。
 
-在项目根目录的 `.env` 中设置 `TYPESAFE_API_KEY`，可选设置 `TYPESAFE_MODEL`（默认 `jev-1.13.0`）。
+> 这是研究原型，不是稳定还原任意魔方的产品，也不是 Jev RLCD 或原版 RLCR 的复现。已完成浅层状态实验；渐进式课程训练仍在计划中。
+
+## 已实现
+
+- 网页逐步决策、动画、回放、实验记录导出；API 密钥仅在服务端读取。
+- 54 面片状态输入，18 种动作输出：`U U' U2 R R' R2 F F' F2 D D' D2 L L' L2 B B' B2`。
+- Qwen3.5 文本主干全参数监督训练及独立动作头保存。
+- 无搜索、无动作过滤的贪心闭环评估。
+- 在线 GRPO：终局成功奖励、冻结参考策略 KL、辅助 Brier 成功概率头。
+- 固定模型的采样温度与轨迹多样性探测。
+- 浅层精确解数据，以及 1000 条随机打乱魔方的求解器轨迹。
+
+所有动作（包括 `U2`）计为一步。打乱次数、求解器返回长度、最短距离是三个不同概念。
+
+## 快速运行网页
+
+需要 Python 3.11+、Node.js 22+、npm 和 [uv](https://docs.astral.sh/uv/)。
 
 ```bash
+git clone https://github.com/ZhangYelinglll/jev-cube-lab.git
+cd jev-cube-lab
+cp .env.example .env
+# 编辑 .env，填写自己的 TYPESAFE_API_KEY
 npm --prefix cube_lab ci
 npm --prefix cube_lab run build
 uv run --env-file .env python cube_server.py
 ```
 
-打开 http://127.0.0.1:8765 。如果项目运行在远程服务器，请把 8765 端口转发到本机。服务默认只监听本机；密钥仅由 Python 服务读取，静态资源仅开放应用页面、样式及构建产物。
+打开 <http://127.0.0.1:8765>。远程服务器需要监听所有网卡时：
 
-## 使用
+```bash
+uv run --env-file .env python cube_server.py --host 0.0.0.0 --port 8765
+```
 
-选择打乱步数，点击“执行一步”或“开始自动实验”。暂停会等待当前请求及动画结束，避免产生半步状态。还原成功或达到步数上限会结束本轮；重复状态不会停止。暂时连接失败会自动重试两次（每步最多三次请求），期间不改变魔方；仍失败则暂停，可手动继续。暂停也会取消尚未开始的重试。
+该服务没有用户认证，不要直接作为公开 API 部署；访问者可消耗服务端的 Jev API 用量。远程个人使用可选择端口转发或限制网络访问。公开源代码不要求把运行服务暴露到公网。
 
-点击操作轨迹回看对应状态和概率；重放不消耗 API。修改难度或上限会新建一轮。记录保存在当前浏览器，保留最近 100 轮，可导出 JSON。未完成、提前结束、网络错误不计入成功率。打乱步数不等于最短解距离；小样本结果不能视为整体能力评估。
+Jev 网页会过滤立即逆操作和部分重复状态；本地 Qwen 评估没有这些过滤，因此两者成绩不能直接比较。网页显示的置信度不是还原成功率。使用细节见 [网页说明](cube_lab/README.md)。
 
-状态使用 `cubejs/lib/cube.js`（不导入 solve 模块），动画使用固定版本 cubing.js。两个模块使用相同的 Singmaster 操作序列。返回值由服务端校验后才执行。置信度衡量概率分布集中程度，不是还原正确率。页面展示可观测输入、输出和结果，不生成推理解释。
+## 训练环境与复现
+
+已在独立 H800 服务器验证的环境：Python 3.11、PyTorch 2.6.0+cu124、Transformers 5.3.0。网页不需要安装训练依赖。请使用独立环境，并根据 GPU 驱动安装 PyTorch；以下对应 CUDA 12.4：
+
+```bash
+python -m venv .venv-train
+source .venv-train/bin/activate
+python -m pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cu124
+python -m pip install -r requirements-training.txt
+python cube_smoke.py --self-test
+```
+
+自行下载 `Qwen/Qwen3.5-0.8B`，将 `CUBE_MODEL` 指向完整的本地模型目录。实验使用非 Base 版本，模型权重不在本仓库分发，使用时遵守上游模型条款。
+
+```bash
+export CUBE_MODEL=/path/to/Qwen3.5-0.8B
+CUDA_VISIBLE_DEVICES=0 python cube_smoke.py \
+  --model "$CUBE_MODEL" --batch-size 2 --steps 1
+
+CUDA_VISIBLE_DEVICES=0 python cube_train.py \
+  --model "$CUBE_MODEL" \
+  --data data/cube_trajectories_1000.jsonl \
+  --output "$HOME/cube-runs/overfit-1000" --batch-size 8 --epochs 100
+
+CUDA_VISIBLE_DEVICES=0 python cube_eval.py \
+  --checkpoint "$HOME/cube-runs/overfit-1000/checkpoint" \
+  --data data/cube_trajectories_expanded.jsonl --seed 17 --max-steps 10
+```
+
+注意评估命令刻意使用 **323 状态数据文件**来重建固定的 332 个验证起点，不要改为 1000 状态文件后直接比较结果。所有训练命令要求新的输出目录。
+
+GRPO、探测实验和各阶段详细流程见 [TRAINING.md](TRAINING.md)。目前 `cube_grpo.py` 的训练采样温度固定为 1.0；`cube_probe.py --temperatures ...` 只做诊断，不改变训练策略。新的课程学习、有效组补采样、关闭置信度主干梯度等方案尚未实现。
+
+## 数据与结果
+
+仓库提供自动生成的魔方数据，不包含模型权重、API 响应日志或个人运行目录：
+
+| 数据 | 用途 |
+|---|---|
+| `cube_shallow_256.jsonl` | 256 个精确距离 1～3 的状态 |
+| `cube_trajectories_expanded.jsonl` | 展开专家路径并去重后的 323 状态 |
+| `cube_trajectories_1000.jsonl` | 保留验证起点后扩充的 1000 状态 |
+| `cube_random_1000/all.jsonl` | 1000 个随机打乱 30 次的状态与完整可行解 |
+
+生成方法、字段与数据边界见 [数据说明](data/README.md)。最后一批解法长度为 18～22，**不是最短距离**，尚未拆分训练／验证集，不能直接交给当前浅层 `cube_train.py`。
+
+固定 332 个浅层验证起点上的单次实验记录：
+
+| 模型 | 成功数 | 还原率 |
+|---|---:|---:|
+| 323 状态监督模型 | 185/332 | 55.72% |
+| 1000 状态监督模型 | 222/332 | 66.87% |
+| 1000 状态监督模型＋20 轮 GRPO | 224/332 | 67.47% |
+
+这些结果由训练服务器运行后记录，未附权重；不是多随机种子结论，也不证明完整随机魔方的还原能力。验证集已反复使用，中间状态允许与训练集重叠。完整实验口径见 [EXPERIMENTS.md](EXPERIMENTS.md)。
 
 ## 检查
 
+不需要 API 密钥或 GPU 的基础检查：
+
 ```bash
 uv run python check_cube_lab.py
+python check_cube_eval.py
+python check_cube_expand.py
+python check_cube_data.py
 npm --prefix cube_lab run check
-# 启动服务后；浏览器检查使用明确标注的离线接口替身，不调用 Jev。
-cd cube_lab
-npx playwright install chromium
-node check_browser.mjs
-# 或设置 BROWSER_BIN 指向已有 Chromium 可执行文件。
+npm --prefix cube_lab run build
 ```
 
-`node evaluate.mjs` 会真实调用运行中的 Jev 接口，测试 U、R、F'、R U、R U F 五个状态，每轮最多 10 步，将原始响应与轨迹保存到 `data/jev_cube_smoke.json`（需在 cube_lab 目录运行）。该命令消耗 API 用量，不在普通测试中自动运行。
+安装训练依赖后还可以运行真实微型 Qwen3.5 的 CPU 检查：
+
+```bash
+OMP_NUM_THREADS=2 python check_cube_train.py
+OMP_NUM_THREADS=2 python check_cube_grpo.py
+```
+
+浏览器检查见 [网页说明](cube_lab/README.md)，使用离线替身，不消耗 API。`cube_lab/evaluate.mjs` 则会真实调用 Jev，应主动运行并承担用量。
+
+## 项目导航
+
+- `cube_server.py`、`cube_lab/`：API 服务、状态模拟、页面和动画。
+- `cube_smoke.py`、`cube_train.py`：环境验证、监督训练。
+- `cube_eval.py`：独立 Python 魔方模拟与贪心还原评估。
+- `cube_grpo.py`、`cube_probe.py`：在线 RL 与采样诊断。
+- `cube_expand*.py`、`cube_lab/generate_*.mjs`：数据生成与轨迹展开。
+
+## 参考
+
+- [TypeSafe / Jev](https://docs.typesafe.ai/)：网页决策接口；本项目为独立实验。
+- [cubejs](https://github.com/ldez/cubejs)、[cubing.js](https://github.com/cubing/cubing.js)：状态、求解及动画。
+- [DeepCubeA](https://github.com/forestagostinelli/DeepCubeA)：强化学习与搜索方向参考。
+- [RLCR](https://arxiv.org/abs/2507.16806)：校准奖励研究；本项目的辅助 Brier 设计是适配实验。
+
+## 许可
+
+目前仅公开源代码，暂未授予开源许可证。公开可见不等于获得通用的复制、修改或再分发授权。第三方依赖及预训练模型遵循各自许可证，派生材料说明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。

@@ -1,0 +1,25 @@
+name: Offline checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: cube_lab/package-lock.json
+      - run: python -m pip install 'httpx[socks]>=0.28,<1'
+      - run: python check_cube_lab.py
+      - run: python check_cube_eval.py
+      - run: python check_cube_expand.py
+      - run: python check_cube_data.py
+      - run: npm --prefix cube_lab ci
+      - run: npm --prefix cube_lab run check
+      - run: npm --prefix cube_lab run build

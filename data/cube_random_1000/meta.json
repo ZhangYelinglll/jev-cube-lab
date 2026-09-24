@@ -1,0 +1,19 @@
+{
+  "count": 1000,
+  "seed": 20260925,
+  "scramble_length": 30,
+  "generation": "Seeded 30-move random walks, no consecutive same-face turns; not uniform random states",
+  "solver": "cubejs 1.3.2 two-phase solver, maxDepth=22",
+  "metric": "HTM: quarter turn, inverse turn and half turn each count as one action",
+  "grouping": "Actual returned solution length, not shortest distance",
+  "counts_by_solution_length": {
+    "18": 2,
+    "19": 7,
+    "20": 36,
+    "21": 202,
+    "22": 753
+  },
+  "mean_solution_length": 21.697,
+  "validation": "1000 unique non-solved starts; all scrambles and full solutions replayed; states include start and terminal",
+  "usage": "Raw expert trajectories; no train/test split or exclusion applied; do not feed solution or states[1:] as model input"
+}

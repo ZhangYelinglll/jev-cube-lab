@@ -1,0 +1,22 @@
+{
+  "source_count": 256,
+  "raw_steps": 632,
+  "unique_states": 323,
+  "added_states": 67,
+  "deduplicated_occurrences": 309,
+  "alternative_optimal_action_occurrences": 0,
+  "by_depth": {
+    "1": 18,
+    "2": 167,
+    "3": 138
+  },
+  "label_policy": "Preserve original labels; otherwise first encountered verified optimal action.",
+  "validation": "All source solutions shortest and replayed; all intermediate states supervised; solved states omitted.",
+  "old_heldout_starts_now_in_training": 67,
+  "new_heldout_by_depth": {
+    "2": 76,
+    "3": 256
+  },
+  "evaluation_seed": 17,
+  "evaluation_scope": "Unseen initial states; later states may overlap training. Compare both checkpoints using --data pointing to this expanded dataset and --seed 17."
+}

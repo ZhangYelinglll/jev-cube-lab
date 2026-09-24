@@ -1,0 +1,40 @@
+{
+  "count": 256,
+  "seed": 20260924,
+  "solver": "Exact breadth-first distance-table search, depth <= 3; cubejs 1.3.2 transitions",
+  "metric": "HTM: quarter turn, inverse quarter turn, and half turn each cost one move",
+  "face_order": "URFDLB",
+  "facelets": "Each face row-major, viewed from outside; cubejs convention",
+  "actions": [
+    "U",
+    "U'",
+    "U2",
+    "R",
+    "R'",
+    "R2",
+    "F",
+    "F'",
+    "F2",
+    "D",
+    "D'",
+    "D2",
+    "L",
+    "L'",
+    "L2",
+    "B",
+    "B'",
+    "B2"
+  ],
+  "samples_by_optimal_distance": {
+    "1": 18,
+    "2": 100,
+    "3": 138
+  },
+  "complete_shell_sizes": {
+    "1": 18,
+    "2": 243,
+    "3": 3240
+  },
+  "validation": "256 distinct non-solved states; all solver solutions replay to solved and match BFS shortest distance",
+  "usage": "Training smoke/overfit set only. Feed input (or faces); labels are target_index. Never feed scramble, solution, or distance to the model. Multiple optimal solutions may exist; one verified solution is stored. Not a held-out evaluation set."
+}
