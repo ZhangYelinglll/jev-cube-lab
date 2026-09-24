@@ -52,4 +52,4 @@ GRPO 从排除固定验证起点后的二、三步状态池采样，模型实际
 
 ## 课程数据 v1
 
-`curriculum_v1/` 保存由随机专家轨迹展开的分层数据、轨迹划分和过滤报告。生成命令：`python -m cube.curriculum`。详见 [课程数据说明](../docs/CURRICULUM.md)。当前浅层训练脚本不兼容这一新格式。
+`curriculum_v1/` 保存由随机专家轨迹展开的分层数据、轨迹划分和过滤报告。生成命令：`python -m cube.curriculum`。详见 [课程数据说明](../docs/CURRICULUM.md)。使用 `python -m cube.train --curriculum` 读取新格式；详见课程数据说明中的训练命令。

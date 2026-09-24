@@ -14,7 +14,7 @@ import torch
 from cube.smoke import ACTIONS, action_logits
 
 
-def read_data(path):
+def read_data(path, allow_curriculum=False):
     rows, seen = [], set()
     for line_number, line in enumerate(path.read_text().splitlines(), 1):
         if not line.strip():
@@ -22,14 +22,25 @@ def read_data(path):
         row = json.loads(line)
         state = row['state']
         target = row['target_index']
+        distance = row.get('expert_remaining') if allow_curriculum and 'expert_remaining' in row else row['optimal_distance']
         if (not isinstance(state, str) or Counter(state) != Counter({f: 9 for f in 'URFDLB'})
                 or state in seen or type(target) is not int or not 0 <= target < 18
                 or ACTIONS[target] != row['target_action']
-                or type(row['optimal_distance']) is not int or not 1 <= row['optimal_distance'] <= 3
+                or type(distance) is not int or not 1 <= distance <= (100 if allow_curriculum else 3)
                 or not row['solution'] or row['solution'][0] != row['target_action']
-                or len(row['solution']) != row['optimal_distance']
+                or len(row['solution']) != distance
                 or any(a not in ACTIONS for a in row['solution'])):
             raise ValueError(f'Invalid/duplicate training row at line {line_number}')
+        if allow_curriculum:
+            from cube.eval import SOLVED, move
+            current = state
+            if current == SOLVED:
+                raise ValueError('Solved states cannot have an action label')
+            for action in row['solution']:
+                current = move(current, action)
+            if current != SOLVED:
+                raise ValueError(f'Invalid solution at line {line_number}')
+            row['expert_remaining'] = distance
         # Rebuild the input from state alone: metadata cannot leak into the prompt.
         row['input'] = '\n'.join(f'{f}: {state[i*9:i*9+9]}' for i, f in enumerate('URFDLB')) + '\nAction:'
         rows.append(row)
@@ -88,9 +99,27 @@ def save_model(body, head, path):
     (path / 'actions.json').write_text(json.dumps(list(ACTIONS), indent=2) + '\n')
 
 
+def load_checkpoint(path):
+    from transformers import Qwen3_5TextConfig, Qwen3_5TextModel
+    if json.loads((path / 'actions.json').read_text()) != list(ACTIONS):
+        raise ValueError('Checkpoint action mapping mismatch')
+    cfg = Qwen3_5TextConfig(**json.loads((path / 'backbone/config.json').read_text()))
+    body, info = Qwen3_5TextModel.from_pretrained(path / 'backbone', config=cfg,
+        local_files_only=True, dtype=torch.float32, attn_implementation='sdpa', output_loading_info=True)
+    if any(info.get(k) for k in ('missing_keys','unexpected_keys','mismatched_keys','error_msgs')):
+        raise ValueError(f'Checkpoint mismatch: {info}')
+    head = torch.nn.Linear(cfg.hidden_size, 18)
+    head.load_state_dict(torch.load(path / 'action_head.pt', map_location='cpu', weights_only=True))
+    return body, head
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--model', type=Path, required=True)
+    source = p.add_mutually_exclusive_group(required=True)
+    source.add_argument('--model', type=Path)
+    source.add_argument('--checkpoint', type=Path, help='Warm-start saved backbone and action head; fresh optimizer')
+    p.add_argument('--curriculum', action='store_true', help='Validate expert suffix data, not shortest-path labels')
+    p.add_argument('--replay-data', type=Path, help='Mix previous supervised states; previous labels win on overlap')
     p.add_argument('--data', type=Path, default=Path('data/cube_shallow_256.jsonl'))
     p.add_argument('--output', type=Path, default=Path('runs/cube-overfit-256'))
     p.add_argument('--batch-size', type=int, default=8)
@@ -111,11 +140,21 @@ def main():
     import transformers
     from transformers import AutoTokenizer, Qwen3_5Model
     torch.manual_seed(args.seed)
-    rows = read_data(args.data)
-    cfg = json.loads((args.model / 'config.json').read_text())
-    if cfg.get('model_type') != 'qwen3_5':
-        p.error('Expected a full Qwen3.5 dense model directory')
-    tokenizer = AutoTokenizer.from_pretrained(args.model, local_files_only=True, padding_side='right')
+    rows = read_data(args.data, args.curriculum)
+    if args.replay_data:
+        replay = read_data(args.replay_data, args.curriculum)
+        combined = {r['state']: r for r in rows}
+        combined.update({r['state']: r for r in replay})
+        rows = list(combined.values())
+    if args.checkpoint:
+        cfg = {'text_config': json.loads((args.checkpoint / 'backbone/config.json').read_text())}
+        tokenizer_path = args.checkpoint / 'tokenizer'
+    else:
+        cfg = json.loads((args.model / 'config.json').read_text())
+        if cfg.get('model_type') != 'qwen3_5':
+            p.error('Expected a full Qwen3.5 dense model directory')
+        tokenizer_path = args.model
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, local_files_only=True, padding_side='right')
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token = tokenizer.eos_token
     tokens = tokenizer([r['input'] for r in rows], padding=True, truncation=False,
@@ -123,17 +162,20 @@ def main():
     if tokens['input_ids'].shape[1] > min(512, cfg['text_config']['max_position_embeddings']):
         raise ValueError('Unexpected input length; refusing to truncate')
     labels = torch.tensor([r['target_index'] for r in rows])
-    depths = [r['optimal_distance'] for r in rows]
-    print(f'Loading {args.model}; samples={len(rows)}, max tokens={tokens["input_ids"].shape[1]}', flush=True)
-    full, info = Qwen3_5Model.from_pretrained(args.model, local_files_only=True,
-        dtype=torch.float32, attn_implementation='sdpa', output_loading_info=True)
-    if info.get('missing_keys') or info.get('mismatched_keys') or info.get('error_msgs'):
-        raise RuntimeError(f'Incomplete backbone loading: {info}')
-    body = full.language_model
-    del full
-    body = body.to('cuda')
+    depths = [r['expert_remaining'] if args.curriculum else r['optimal_distance'] for r in rows]
+    print(f'Loading {args.checkpoint or args.model}; samples={len(rows)}, max tokens={tokens["input_ids"].shape[1]}', flush=True)
+    if args.checkpoint:
+        body, head = load_checkpoint(args.checkpoint)
+    else:
+        full, info = Qwen3_5Model.from_pretrained(args.model, local_files_only=True,
+            dtype=torch.float32, attn_implementation='sdpa', output_loading_info=True)
+        if info.get('missing_keys') or info.get('mismatched_keys') or info.get('error_msgs'):
+            raise RuntimeError(f'Incomplete backbone loading: {info}')
+        body = full.language_model
+        del full
+        head = torch.nn.Linear(body.config.hidden_size, 18)
+    body, head = body.to('cuda'), head.to('cuda')
     body.gradient_checkpointing_enable(gradient_checkpointing_kwargs={'use_reentrant': False})
-    head = torch.nn.Linear(body.config.hidden_size, 18).to('cuda')
     optimizer = torch.optim.AdamW([{'params': body.parameters(), 'lr': args.backbone_lr},
                                   {'params': head.parameters(), 'lr': args.head_lr}])
     args.output.mkdir(parents=True, exist_ok=False)
@@ -151,6 +193,8 @@ def main():
             metrics = {'epoch': epoch, **evaluate(body, head, tokens, labels, depths, args.batch_size, 'cuda'),
                        'elapsed_seconds': round(time.monotonic() - start, 2),
                        'peak_vram_gib': round(torch.cuda.max_memory_allocated() / 2**30, 2)}
+            if args.curriculum:
+                metrics['train_label_accuracy_by_expert_remaining'] = metrics.pop('train_label_accuracy_by_depth')
             line = json.dumps(metrics)
             print(line, flush=True)
             log.write(line + '\n')

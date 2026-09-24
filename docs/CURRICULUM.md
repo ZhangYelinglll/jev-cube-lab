@@ -55,8 +55,26 @@ python -m cube.curriculum --output data/curriculum_rebuilt
 
 `expert_remaining` 是选择的可行后缀长度，**不代表最短距离**。`optimal_distance` 仅在现有深度 3 的精确 BFS 表覆盖该状态时填写，否则为 null。`solution` / `target_action` / `target_index` 是监督标签，不能作为策略输入。`source_id` / `source_step` 用于追踪来源。
 
-目前阶段文件没有自动混入旧 SFT 数据，也没有新增随机游走样本。现有 `cube.train` 要求浅层最短解格式，`cube.eval` 也面向浅层验证，**请勿直接把这些新文件交给旧训练、评估命令**。
+目前阶段文件没有自动混入旧 SFT 数据，也没有新增随机游走样本。`cube.train --curriculum` 已支持这一格式，并逐条回放验证专家解法。`cube.eval` 仍面向浅层验证，不能直接用新课程验证文件评估。
 
 ## 下一步
 
-实现支持新数据格式的监督训练与课程评估，保持真实还原率作为主要指标；加入旧浅层状态回放和多样化随机游走数据，并重新校验数据隔离。先完成 1～3 步、4～5 步的监督基线，再比较同起始模型上的课程 GRPO。新的阶段长度应明确标为专家剩余步数；不能将 4～5 步后缀的结果宣称为精确四、五步距离的结果。
+监督训练已支持新格式；接下来实现课程闭环评估，保持真实还原率作为主要指标；加入旧浅层状态回放和多样化随机游走数据，并重新校验数据隔离。先完成 1～3 步、4～5 步的监督基线，再比较同起始模型上的课程 GRPO。新的阶段长度应明确标为专家剩余步数；不能将 4～5 步后缀的结果宣称为精确四、五步距离的结果。
+
+## 开始第一阶段课程监督训练
+
+从原来的 SFT 1000 检查点继续，混入原有状态；重叠状态保留原来的标签。检查点恢复主干与动作头，优化器重新初始化。`--curriculum` 按专家剩余步数报告标签准确率，不把它误称为最短距离。
+
+```bash
+git pull --ff-only
+CUDA_VISIBLE_DEVICES=1 python -m cube.train \
+  --checkpoint "$HOME/cube-runs/overfit-1000/checkpoint" \
+  --curriculum \
+  --data data/curriculum_v1/train_upto_5.jsonl \
+  --replay-data data/cube_trajectories_1000.jsonl \
+  --output "$HOME/cube-runs/curriculum-sft-5-v1" \
+  --batch-size 8 --epochs 20 \
+  --backbone-lr 1e-6 --head-lr 1e-5
+```
+
+输出目录必须未存在。训练最多 20 轮，训练标签准确率达到默认 99% 时提前停止。此阶段属于监督学习，不是 GRPO；课程验证起点尚未参与训练，也没有基于它们选择最佳检查点。训练日志中的标签准确率不是完整还原率。
