@@ -55,11 +55,11 @@ python -m cube.curriculum --output data/curriculum_rebuilt
 
 `expert_remaining` 是选择的可行后缀长度，**不代表最短距离**。`optimal_distance` 仅在现有深度 3 的精确 BFS 表覆盖该状态时填写，否则为 null。`solution` / `target_action` / `target_index` 是监督标签，不能作为策略输入。`source_id` / `source_step` 用于追踪来源。
 
-目前阶段文件没有自动混入旧 SFT 数据，也没有新增随机游走样本。`cube.train --curriculum` 已支持这一格式，并逐条回放验证专家解法。`cube.eval` 仍面向浅层验证，不能直接用新课程验证文件评估。
+目前阶段文件没有自动混入旧 SFT 数据，也没有新增随机游走样本。`cube.train --curriculum` 已支持这一格式，并逐条回放验证专家解法。`cube.eval --curriculum` 支持课程验证起点，并检查它们与检查点旁的训练快照没有重叠。
 
 ## 下一步
 
-监督训练已支持新格式；接下来实现课程闭环评估，保持真实还原率作为主要指标；加入旧浅层状态回放和多样化随机游走数据，并重新校验数据隔离。先完成 1～3 步、4～5 步的监督基线，再比较同起始模型上的课程 GRPO。新的阶段长度应明确标为专家剩余步数；不能将 4～5 步后缀的结果宣称为精确四、五步距离的结果。
+监督训练已支持新格式；接下来运行课程闭环评估，保持真实还原率作为主要指标；加入旧浅层状态回放和多样化随机游走数据，并重新校验数据隔离。先完成 1～3 步、4～5 步的监督基线，再比较同起始模型上的课程 GRPO。新的阶段长度应明确标为专家剩余步数；不能将 4～5 步后缀的结果宣称为精确四、五步距离的结果。
 
 ## 开始第一阶段课程监督训练
 
@@ -78,3 +78,29 @@ CUDA_VISIBLE_DEVICES=1 python -m cube.train \
 ```
 
 所有命令在项目根目录执行，输出保存在 `runs/`，该目录由 `.gitignore` 排除。若已有检查点保存在其他位置，将 `--checkpoint` 改为它的实际路径，无需重新训练或移动。输出目录必须未存在。训练最多 20 轮，训练标签准确率达到默认 99% 时提前停止。此阶段属于监督学习，不是 GRPO；课程验证起点尚未参与训练，也没有基于它们选择最佳检查点。训练日志中的标签准确率不是完整还原率。
+
+## 比较课程训练前后的闭环还原率
+
+使用同一批验证起点：专家剩余 4 步 77 个、5 步 94 个，共 171 个。最终测试集暂不使用。两个模型均采用贪心动作选择，不加搜索或动作过滤，最多执行 12 步。模型只接收当前状态，不接收专家解法。
+
+在项目根目录执行；将第一个检查点路径改为现有 SFT 1000 检查点的位置：
+
+```bash
+CUDA_VISIBLE_DEVICES=6 python -m cube.eval \
+  --checkpoint runs/overfit-1000/checkpoint \
+  --curriculum --data data/curriculum_v1/validation.jsonl \
+  --expert-remaining 4 5 --max-steps 12 \
+  --output runs/eval-curriculum-5-before
+
+CUDA_VISIBLE_DEVICES=6 python -m cube.eval \
+  --checkpoint runs/curriculum-sft-5-v1/checkpoint \
+  --curriculum --data data/curriculum_v1/validation.jsonl \
+  --expert-remaining 4 5 --max-steps 12 \
+  --output runs/eval-curriculum-5-after
+```
+
+输出目录必须未存在。各目录的 `summary.json` 提供总体和分组指标，`episodes.jsonl` 保留实际动作，`cases.jsonl` 保留起点。主要比较 `success_rate` 和 `repeat_episode_rate`；`solve_within_expert_length_rate` 表示在专家步数以内还原的比例，**不是最短解率**。
+
+每次运行读取检查点旁的 `training_data.jsonl`，发现所选起点与该训练快照重叠就报错。数据构建阶段另已排除之前 SFT 状态；检查点快照本身不代表全部历史训练数据。后续状态允许与训练集重叠。此验证用于决定是否推进课程，不能替代最终测试。
+
+无需 GPU 的检查：`python -m tests.check_curriculum_eval`。

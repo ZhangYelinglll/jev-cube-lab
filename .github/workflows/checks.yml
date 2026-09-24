@@ -21,6 +21,7 @@ jobs:
       - run: python -m tests.check_expand
       - run: python -m tests.check_data
       - run: python -m tests.check_curriculum
+      - run: python -m tests.check_curriculum_eval
       - run: npm --prefix web ci
       - run: npm --prefix web run check
       - run: npm --prefix web run build

@@ -65,6 +65,31 @@ def make_cases(rows, seed):
     return cases
 
 
+def make_curriculum_cases(rows, training_rows, remaining):
+    training = {r['state'] for r in training_rows}
+    seen, cases = set(), []
+    for row in rows:
+        state, solution, length = row['state'], row['solution'], row['expert_remaining']
+        if (not isinstance(state, str) or Counter(state) != Counter({f:9 for f in 'URFDLB'})
+                or state == SOLVED or state in seen or type(length) is not int or length < 1
+                or len(solution) != length or any(a not in ACTIONS for a in solution)):
+            raise ValueError('Invalid/duplicate curriculum case')
+        seen.add(state)
+        replay = state
+        for action in solution:
+            replay = move(replay, action)
+        if replay != SOLVED:
+            raise ValueError('Curriculum expert solution does not solve')
+        if length in remaining:
+            if state in training:
+                raise ValueError('Curriculum evaluation start overlaps checkpoint training data')
+            cases.append({'id': f"{row['source_id']}-step-{row['source_step']}",
+                          'state':state, 'expert_remaining':length, 'split':'validation'})
+    if not cases:
+        raise ValueError('No curriculum cases at requested remaining lengths')
+    return cases
+
+
 def rollout(cases, predict, max_steps):
     results = [{**c, 'initial_state': c['state'], 'moves': [], 'solved': c['state'] == SOLVED,
                 'repeated_states': 0} for c in cases]
@@ -91,11 +116,17 @@ def rollout(cases, predict, max_steps):
 
 def summarize(results):
     successes = [r for r in results if r['solved']]
-    return {'cases': len(results), 'solved': len(successes),
-            'success_rate': len(successes) / len(results),
-            'mean_steps_success': sum(len(r['moves']) for r in successes) / len(successes) if successes else None,
-            'shortest_solve_rate': sum(r['solved'] and len(r['moves']) == r['depth'] for r in results) / len(results),
-            'repeat_episode_rate': sum(r['repeated_states'] > 0 for r in results) / len(results)}
+    metrics = {'cases': len(results), 'solved': len(successes),
+               'success_rate': len(successes) / len(results),
+               'mean_steps_success': sum(len(r['moves']) for r in successes) / len(successes) if successes else None,
+               'repeat_episode_rate': sum(r['repeated_states'] > 0 for r in results) / len(results)}
+    if 'expert_remaining' in results[0]:
+        metrics['solve_within_expert_length_rate'] = sum(
+            r['solved'] and len(r['moves']) <= r['expert_remaining'] for r in results) / len(results)
+    else:
+        metrics['shortest_solve_rate'] = sum(
+            r['solved'] and len(r['moves']) == r['depth'] for r in results) / len(results)
+    return metrics
 
 
 def main():
@@ -103,12 +134,18 @@ def main():
     p.add_argument('--checkpoint', type=Path, required=True)
     p.add_argument('--data', type=Path, help='Default: exact training_data.jsonl saved beside checkpoint')
     p.add_argument('--output', type=Path)
+    p.add_argument('--curriculum', action='store_true', help='Evaluate expert-suffix validation starts')
+    p.add_argument('--expert-remaining', type=int, nargs='+', help='Curriculum lengths to evaluate, default: 4 5')
     p.add_argument('--batch-size', type=int, default=16)
     p.add_argument('--max-steps', type=int, default=10)
     p.add_argument('--seed', type=int, default=17)
     args = p.parse_args()
     if args.batch_size < 1 or args.max_steps < 1:
         p.error('Batch size and max steps must be positive')
+    if args.curriculum and args.data is None:
+        p.error('--curriculum requires an explicit --data validation file')
+    if args.expert_remaining and (not args.curriculum or min(args.expert_remaining) < 1):
+        p.error('--expert-remaining requires --curriculum and positive lengths')
     data_path = args.data or args.checkpoint.parent / 'training_data.jsonl'
     rows = [json.loads(line) for line in data_path.read_text().splitlines() if line.strip()]
     if not rows:
@@ -116,11 +153,19 @@ def main():
     saved_actions = json.loads((args.checkpoint / 'actions.json').read_text())
     if saved_actions != list(ACTIONS):
         p.error('Checkpoint action ordering mismatch')
-    cases = make_cases(rows, args.seed)
+    if args.curriculum:
+        training_path = args.checkpoint.parent / 'training_data.jsonl'
+        training_rows = [json.loads(line) for line in training_path.read_text().splitlines() if line.strip()]
+        if not training_rows:
+            p.error('Checkpoint training snapshot cannot be empty')
+        cases = make_curriculum_cases(rows, training_rows, args.expert_remaining or [4,5])
+    else:
+        cases = make_cases(rows, args.seed)
     output = args.output or args.checkpoint.parent / f'eval-{datetime.now():%Y%m%d-%H%M%S}'
     output.mkdir(parents=True, exist_ok=False)
     (output / 'cases.jsonl').write_text(''.join(json.dumps(c) + '\n' for c in cases))
-    print('Cases:', dict(Counter(f"{c['split']}_depth{c['depth']}" for c in cases)), flush=True)
+    axis = 'expert_remaining' if args.curriculum else 'depth'
+    print('Cases:', dict(Counter(f"{c['split']}_{axis}{c[axis]}" for c in cases)), flush=True)
     import torch
     import transformers
     from transformers import AutoTokenizer, Qwen3_5TextModel, Qwen3_5TextConfig
@@ -177,14 +222,17 @@ def main():
                'max_steps': args.max_steps, 'seed': args.seed, 'controller': 'greedy argmax, no action filters or search',
                'heldout_scope': 'Initial states excluded from training; subsequent states may overlap training.',
                'torch': torch.__version__, 'transformers': transformers.__version__, 'metrics': {}}
-    for split in ('train', 'heldout'):
+    if args.curriculum:
+        summary['grouping'] = 'Expert suffix length, NOT shortest distance'
+        summary['training_overlap_check'] = str(training_path.resolve())
+    for split in sorted({r['split'] for r in results}):
         subset = [r for r in results if r['split'] == split]
         if subset:
             summary['metrics'][split] = summarize(subset)
-        for depth in (1, 2, 3):
-            group = [r for r in subset if r['depth'] == depth]
+        for depth in sorted({r[axis] for r in subset}):
+            group = [r for r in subset if r[axis] == depth]
             if group:
-                summary['metrics'][f'{split}_depth{depth}'] = summarize(group)
+                summary['metrics'][f'{split}_{axis}{depth}'] = summarize(group)
     (output / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
     print(json.dumps(summary, indent=2), flush=True)
     print(f'Saved evaluation: {output}', flush=True)
