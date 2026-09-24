@@ -68,13 +68,13 @@ python -m cube.curriculum --output data/curriculum_rebuilt
 ```bash
 git pull --ff-only
 CUDA_VISIBLE_DEVICES=1 python -m cube.train \
-  --checkpoint "$HOME/cube-runs/overfit-1000/checkpoint" \
+  --checkpoint "runs/overfit-1000/checkpoint" \
   --curriculum \
   --data data/curriculum_v1/train_upto_5.jsonl \
   --replay-data data/cube_trajectories_1000.jsonl \
-  --output "$HOME/cube-runs/curriculum-sft-5-v1" \
+  --output "runs/curriculum-sft-5-v1" \
   --batch-size 8 --epochs 20 \
   --backbone-lr 1e-6 --head-lr 1e-5
 ```
 
-输出目录必须未存在。训练最多 20 轮，训练标签准确率达到默认 99% 时提前停止。此阶段属于监督学习，不是 GRPO；课程验证起点尚未参与训练，也没有基于它们选择最佳检查点。训练日志中的标签准确率不是完整还原率。
+所有命令在项目根目录执行，输出保存在 `runs/`，该目录由 `.gitignore` 排除。若已有检查点保存在其他位置，将 `--checkpoint` 改为它的实际路径，无需重新训练或移动。输出目录必须未存在。训练最多 20 轮，训练标签准确率达到默认 99% 时提前停止。此阶段属于监督学习，不是 GRPO；课程验证起点尚未参与训练，也没有基于它们选择最佳检查点。训练日志中的标签准确率不是完整还原率。

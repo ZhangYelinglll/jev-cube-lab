@@ -146,10 +146,10 @@ CUDA_VISIBLE_DEVICES=0 python -m cube.smoke \
 CUDA_VISIBLE_DEVICES=0 python -m cube.train \
   --model "$CUBE_MODEL" \
   --data data/cube_trajectories_1000.jsonl \
-  --output "$HOME/cube-runs/overfit-1000" --batch-size 8 --epochs 100
+  --output "runs/overfit-1000" --batch-size 8 --epochs 100
 
 CUDA_VISIBLE_DEVICES=0 python -m cube.eval \
-  --checkpoint "$HOME/cube-runs/overfit-1000/checkpoint" \
+  --checkpoint "runs/overfit-1000/checkpoint" \
   --data data/cube_trajectories_expanded.jsonl --seed 17 --max-steps 10
 ```
 

@@ -10,7 +10,7 @@ Clone or pull the full repository on the training server and run commands from i
 CUDA_VISIBLE_DEVICES=0 python -m cube.train \
   --model "$CUBE_MODEL" \
   --data data/cube_shallow_256.jsonl \
-  --output "$HOME/cube-runs/overfit-256" \
+  --output "runs/overfit-256" \
   --batch-size 8 --epochs 100
 ```
 
@@ -44,7 +44,7 @@ The evaluator is available as `python -m cube.eval`. It uses pure Python facelet
 
 ```bash
 CUDA_VISIBLE_DEVICES=1 python -m cube.eval \
-  --checkpoint "$HOME/cube-runs/overfit-256/checkpoint" \
+  --checkpoint "runs/overfit-256/checkpoint" \
   --batch-size 16 --max-steps 10
 ```
 
@@ -68,18 +68,18 @@ Train again from the SAME original Qwen weights and the same default learning ra
 CUDA_VISIBLE_DEVICES=1 python -m cube.train \
   --model "$CUBE_MODEL" \
   --data data/cube_trajectories_expanded.jsonl \
-  --output "$HOME/cube-runs/overfit-323" --batch-size 8 --epochs 100
+  --output "runs/overfit-323" --batch-size 8 --epochs 100
 ```
 
 The 67 new training states were previously held-out depth-2 starts. Do not compare the new held-out aggregate to the old 399-case score. Re-evaluate both checkpoints on the same expanded exclusion set (76 held-out depth-2 starts + 256 depth-3 starts):
 
 ```bash
 CUDA_VISIBLE_DEVICES=1 python -m cube.eval \
-  --checkpoint "$HOME/cube-runs/overfit-256/checkpoint" \
+  --checkpoint "runs/overfit-256/checkpoint" \
   --data data/cube_trajectories_expanded.jsonl --seed 17 --max-steps 10
 
 CUDA_VISIBLE_DEVICES=1 python -m cube.eval \
-  --checkpoint "$HOME/cube-runs/overfit-323/checkpoint" \
+  --checkpoint "runs/overfit-323/checkpoint" \
   --data data/cube_trajectories_expanded.jsonl --seed 17 --max-steps 10
 ```
 
@@ -97,14 +97,14 @@ Copy `data/cube_trajectories_1000.jsonl` to the training server, then train from
 CUDA_VISIBLE_DEVICES=1 python -m cube.train \
   --model "$CUBE_MODEL" \
   --data data/cube_trajectories_1000.jsonl \
-  --output "$HOME/cube-runs/overfit-1000" --batch-size 8 --epochs 100
+  --output "runs/overfit-1000" --batch-size 8 --epochs 100
 ```
 
 For direct comparison with the recorded 323-state model's 185/332 held-out successes, explicitly retain the OLD evaluation data argument:
 
 ```bash
 CUDA_VISIBLE_DEVICES=1 python -m cube.eval \
-  --checkpoint "$HOME/cube-runs/overfit-1000/checkpoint" \
+  --checkpoint "runs/overfit-1000/checkpoint" \
   --data data/cube_trajectories_expanded.jsonl --seed 17 --max-steps 10
 ```
 
@@ -128,13 +128,13 @@ Pull the full repository on the training server. No new package is required. The
 python -m tests.check_grpo
 
 CUDA_VISIBLE_DEVICES=1 python -m cube.grpo \
-  --checkpoint "$HOME/cube-runs/overfit-1000/checkpoint" \
+  --checkpoint "runs/overfit-1000/checkpoint" \
   --eval-data data/cube_trajectories_expanded.jsonl \
-  --output "$HOME/cube-runs/grpo-1000-pilot" \
+  --output "runs/grpo-1000-pilot" \
   --iterations 20 --groups 4 --group-size 8 --max-steps 10
 
 CUDA_VISIBLE_DEVICES=1 python -m cube.eval \
-  --checkpoint "$HOME/cube-runs/grpo-1000-pilot/checkpoint" \
+  --checkpoint "runs/grpo-1000-pilot/checkpoint" \
   --data data/cube_trajectories_expanded.jsonl --seed 17 --max-steps 10
 ```
 
@@ -149,9 +149,9 @@ CPU check covers terminal rewards, group advantages, no-signal groups, reserved-
 ```bash
 python -m tests.check_grpo
 CUDA_VISIBLE_DEVICES=1 python -m cube.probe \
-  --checkpoint "$HOME/cube-runs/overfit-1000/checkpoint" \
+  --checkpoint "runs/overfit-1000/checkpoint" \
   --eval-data data/cube_trajectories_expanded.jsonl \
-  --output "$HOME/cube-runs/signal-probe-sft" \
+  --output "runs/signal-probe-sft" \
   --starts 64 --temperatures 1.0 1.3 1.6 --group-sizes 8 16
 ```
 

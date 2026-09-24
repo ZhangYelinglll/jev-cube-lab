@@ -18,6 +18,7 @@ data/*
 !data/curriculum_v1/
 *.log
 
+# Local training checkpoints, metrics and evaluation traces
 runs/
 
 torchinductor*/
