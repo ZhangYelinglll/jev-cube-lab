@@ -1,0 +1,101 @@
+{
+  "seed": 20260924,
+  "source_trajectories": 1000,
+  "assigned_trajectories": {
+    "train": 800,
+    "validation": 100,
+    "test": 100
+  },
+  "retained_train_trajectories": 525,
+  "train_trajectories_excluded_for_old_validation": 275,
+  "previous_training_states": 1000,
+  "reserved_old_validation_starts": 332,
+  "unique_samples": {
+    "train": 9969,
+    "validation": 1879,
+    "test": 1863
+  },
+  "by_expert_remaining": {
+    "train": {
+      "1": 9,
+      "2": 44,
+      "3": 222,
+      "4": 436,
+      "5": 509,
+      "6": 523,
+      "7": 525,
+      "8": 525,
+      "9": 525,
+      "10": 525,
+      "11": 525,
+      "12": 525,
+      "13": 525,
+      "14": 525,
+      "15": 525,
+      "16": 525,
+      "17": 525,
+      "18": 525,
+      "19": 524,
+      "20": 521,
+      "21": 496,
+      "22": 385
+    },
+    "validation": {
+      "3": 26,
+      "4": 77,
+      "5": 94,
+      "6": 100,
+      "7": 100,
+      "8": 100,
+      "9": 100,
+      "10": 100,
+      "11": 100,
+      "12": 100,
+      "13": 100,
+      "14": 100,
+      "15": 100,
+      "16": 100,
+      "17": 100,
+      "18": 100,
+      "19": 100,
+      "20": 100,
+      "21": 100,
+      "22": 82
+    },
+    "test": {
+      "3": 20,
+      "4": 78,
+      "5": 96,
+      "6": 98,
+      "7": 100,
+      "8": 100,
+      "9": 100,
+      "10": 100,
+      "11": 100,
+      "12": 100,
+      "13": 100,
+      "14": 100,
+      "15": 100,
+      "16": 100,
+      "17": 100,
+      "18": 100,
+      "19": 100,
+      "20": 100,
+      "21": 97,
+      "22": 74
+    }
+  },
+  "removed_eval_starts": {
+    "validation": 150,
+    "test": 146
+  },
+  "scope": "Unseen evaluation STARTS only; intermediate rollout states may overlap training. Exact-state exclusion, not symmetry exclusion.",
+  "difficulty": "expert_remaining is shortest observed suffix within its source split, not optimal distance. optimal_distance is exact only for states in depth-3 BFS, null otherwise.",
+  "stage_scope": "Stage files contain expert suffixes only. Previous SFT states are used for exclusions but are not automatically mixed into these files.",
+  "status": "Data preparation only; existing shallow trainer/evaluator do not accept this curriculum schema.",
+  "inputs": {
+    "data": "data/cube_random_1000/all.jsonl",
+    "previous_data": "data/cube_trajectories_1000.jsonl",
+    "eval_data": "data/cube_trajectories_expanded.jsonl"
+  }
+}

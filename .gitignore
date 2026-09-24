@@ -15,6 +15,7 @@ data/*
 !data/cube_trajectories_1000.jsonl
 !data/cube_trajectories_1000.meta.json
 !data/cube_random_1000/
+!data/curriculum_v1/
 *.log
 
 runs/

@@ -49,3 +49,7 @@ node web/tools/generate_random.mjs data/cube_random_regenerated
 ## 在线 GRPO 数据
 
 GRPO 从排除固定验证起点后的二、三步状态池采样，模型实际执行生成 `episodes.jsonl`。这是在线交互数据，与上述专家轨迹不同。运行目录里的 `training_data.jsonl` 是监督阶段快照；不是 RL 的动作标签来源。运行日志默认不纳入版本控制。
+
+## 课程数据 v1
+
+`curriculum_v1/` 保存由随机专家轨迹展开的分层数据、轨迹划分和过滤报告。生成命令：`python -m cube.curriculum`。详见 [课程数据说明](../docs/CURRICULUM.md)。当前浅层训练脚本不兼容这一新格式。
