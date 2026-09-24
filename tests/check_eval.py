@@ -1,14 +1,14 @@
-"""Run with python check_cube_eval.py; no torch or GPU required."""
+"""Run with python -m tests.check_eval; no torch or GPU required."""
 import json
 from pathlib import Path
-from cube_smoke import STATES
-from cube_eval import ACTIONS, SOLVED, move, distances_to_goal, rollout, summarize, make_cases
+from cube.smoke import STATES
+from cube.eval import ACTIONS, SOLVED, move, distances_to_goal, rollout, summarize, make_cases
 
 
 def main():
     for a, expected in STATES.items():
         assert move(SOLVED, a) == expected
-    rows = [json.loads(line) for line in (Path(__file__).parent / 'data/cube_shallow_256.jsonl').read_text().splitlines()]
+    rows = [json.loads(line) for line in (Path(__file__).resolve().parents[1] / 'data/cube_shallow_256.jsonl').read_text().splitlines()]
     selected = make_cases(rows, 17)
     heldout = [c for c in selected if c['split'] == 'heldout']
     assert len(selected) == 655 and len(heldout) == 399

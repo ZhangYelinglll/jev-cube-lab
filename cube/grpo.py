@@ -11,8 +11,8 @@ import random
 from pathlib import Path
 import time
 import torch
-from cube_eval import ACTIONS, SOLVED, move, distances_to_goal, make_cases
-from cube_train import read_data, save_model
+from cube.eval import ACTIONS, SOLVED, move, distances_to_goal, make_cases
+from cube.train import read_data, save_model
 
 
 def group_advantages(outcomes):

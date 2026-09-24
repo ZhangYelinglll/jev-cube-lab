@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Expand verified shortest solutions into deduplicated state/next-action samples.
-Uses cube_eval.py + cube_smoke.py; no torch, GPU or Node.js required.
+Uses cube/eval.py + cube/smoke.py; no torch, GPU or Node.js required.
 """
 import argparse
 import json
 from collections import Counter
 from pathlib import Path
-from cube_eval import ACTIONS, SOLVED, move, distances_to_goal, make_cases
+from cube.eval import ACTIONS, SOLVED, move, distances_to_goal, make_cases
 
 
 def expand(rows):
@@ -72,8 +72,8 @@ def expand(rows):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--data', type=Path, default=Path(__file__).parent / 'data/cube_shallow_256.jsonl')
-    p.add_argument('--output', type=Path, default=Path(__file__).parent / 'data/cube_trajectories_expanded.jsonl')
+    p.add_argument('--data', type=Path, default=Path(__file__).resolve().parents[1] / 'data/cube_shallow_256.jsonl')
+    p.add_argument('--output', type=Path, default=Path(__file__).resolve().parents[1] / 'data/cube_trajectories_expanded.jsonl')
     args = p.parse_args()
     rows = [json.loads(s) for s in args.data.read_text().splitlines() if s.strip()]
     expanded, report = expand(rows)

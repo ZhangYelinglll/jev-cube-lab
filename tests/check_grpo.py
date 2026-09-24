@@ -1,7 +1,7 @@
 """CPU tests for grouped rollout, losses and confidence gradients."""
 import torch
-from cube_eval import SOLVED, move
-from cube_grpo import Agent, group_advantages, collect_groups, objective
+from cube.eval import SOLVED, move
+from cube.grpo import Agent, group_advantages, collect_groups, objective
 
 
 def main():
@@ -22,7 +22,7 @@ def main():
     for e in groups[0]:
         assert e['outcome'] == int(move(start, e['steps'][0]['action']) == SOLVED)
     assert collect_groups(Policy(), [start], 4, 2, {start}) == []
-    from cube_probe import summarize
+    from cube.probe import summarize
     report = summarize(groups)
     assert report['informative_groups'] == 1 and report['all_failure_groups'] == 0
     assert report['mean_unique_first_actions'] == 2

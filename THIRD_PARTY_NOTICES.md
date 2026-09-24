@@ -1,6 +1,6 @@
 # Third-party notices
 
-`cube_eval.py` contains facelet permutations derived from cubejs 1.3.2. The following notice applies to that upstream material, not as a license grant for the entire project. Other dependencies retain their own licenses.
+`cube/eval.py` contains facelet permutations derived from cubejs 1.3.2. The following notice applies to that upstream material, not as a license grant for the entire project. Other dependencies retain their own licenses.
 
 ## cubejs
 

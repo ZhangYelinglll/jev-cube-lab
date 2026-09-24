@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Extend the 323-state set to 1000, preserving its 332 held-out starts.
-Run with Python only; requires cube_eval.py and cube_smoke.py beside this file.
+Run with Python only; run from the repository root with python -m cube.expand_1000.
 """
 import json
 import random
 from collections import Counter
 from pathlib import Path
-from cube_eval import ACTIONS, SOLVED, distances_to_goal, make_cases, move
+from cube.eval import ACTIONS, SOLVED, distances_to_goal, make_cases, move
 
 
 def build(source):
@@ -65,14 +65,14 @@ def build(source):
         'trajectory_heldout_overlap': 0,
         'solver': 'Exact depth-3 BFS distances with shortest continuation through original training states',
         'sampling_scope': 'New depth-3 starts are selected to have an optimal path through the original 323-state set; not uniform over every depth-3 state.',
-        'evaluation': 'Use cube_eval.py --data data/cube_trajectories_expanded.jsonl --seed 17 for BOTH old and new checkpoints. This freezes the same 332 held-out starts and original 323-state diagnostic pool.',
+        'evaluation': 'Use python -m cube.eval --data data/cube_trajectories_expanded.jsonl --seed 17 for BOTH old and new checkpoints. This freezes the same 332 held-out starts and original 323-state diagnostic pool.',
         'validation': 'All 1000 solutions replay to solved in exact shortest distance; all intermediate states supervised; original rows unchanged.',
     }
     return result, report
 
 
 def main():
-    folder = Path(__file__).parent / 'data'
+    folder = Path(__file__).resolve().parents[1] / 'data'
     source = [json.loads(s) for s in (folder / 'cube_trajectories_expanded.jsonl').read_text().splitlines()]
     rows, report = build(source)
     output = folder / 'cube_trajectories_1000.jsonl'

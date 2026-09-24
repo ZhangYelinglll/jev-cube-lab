@@ -1,4 +1,4 @@
-// Run: node cube_lab/generate_shallow.mjs
+// Run: node web/tools/generate_shallow.mjs
 // Exact shallow-state BFS solver using cubejs transitions; labels depend only on state.
 import Cube from 'cubejs';
 import assert from 'node:assert/strict';
@@ -80,7 +80,7 @@ const records = selected.map((sample, index) => {
 });
 assert.equal(records.length, 256);
 assert.equal(new Set(records.map(r => r.state)).size, 256);
-const output = new URL('../data/', import.meta.url);
+const output = new URL('../../data/', import.meta.url);
 await mkdir(output, { recursive: true });
 await writeFile(new URL('cube_shallow_256.jsonl', output), records.map(r => JSON.stringify(r)).join('\n') + '\n');
 await writeFile(new URL('cube_shallow_256.meta.json', output), JSON.stringify({

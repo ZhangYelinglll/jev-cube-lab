@@ -17,10 +17,10 @@
 在干净的仓库副本中重新生成（脚本会拒绝覆盖部分已有文件，因此先将现有对应数据移到其他目录）：
 
 ```bash
-npm --prefix cube_lab ci
-node cube_lab/generate_shallow.mjs
-python cube_expand.py
-python cube_expand_1000.py
+npm --prefix web ci
+node web/tools/generate_shallow.mjs
+python -m cube.expand
+python -m cube.expand_1000
 ```
 
 ## 随机打乱的 1000 条完整轨迹
@@ -41,7 +41,7 @@ cubejs 1.3.2 通用两阶段求解器返回的解法长度分布：
 
 ```bash
 # 新目录不能已存在，父目录必须存在。
-node cube_lab/generate_random.mjs data/cube_random_regenerated
+node web/tools/generate_random.mjs data/cube_random_regenerated
 ```
 
 该批轨迹尚未划分训练／验证集，也没有排除浅层验证状态。不能直接作为当前浅层训练脚本的输入。课程学习使用前需要先划分数据、检查状态重叠并展开后缀。通用求解器的后缀分布也不能视为同距离所有魔方状态的均匀样本。

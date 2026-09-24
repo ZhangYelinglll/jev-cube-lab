@@ -5,13 +5,13 @@ from pathlib import Path
 
 import torch
 from transformers import Qwen3_5TextConfig, Qwen3_5TextModel
-from cube_smoke import ACTIONS, action_logits
-from cube_train import read_data, train_epoch, evaluate, save_model
+from cube.smoke import ACTIONS, action_logits
+from cube.train import read_data, train_epoch, evaluate, save_model
 
 
 def main():
     torch.manual_seed(17)
-    rows = read_data(Path(__file__).parent / 'data/cube_shallow_256.jsonl')
+    rows = read_data(Path(__file__).resolve().parents[1] / 'data/cube_shallow_256.jsonl')
     assert len(rows) == 256
     with tempfile.TemporaryDirectory() as tmp:
         bad = dict(rows[0], target_index=17)

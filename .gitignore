@@ -4,7 +4,7 @@
 .venv*/
 __pycache__/
 node_modules/
-cube_lab/dist/
+web/dist/
 data/*
 !data/README.md
 !data/cube_shallow_256.jsonl

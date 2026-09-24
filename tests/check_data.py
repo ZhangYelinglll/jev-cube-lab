@@ -2,9 +2,9 @@
 import json
 from collections import Counter
 from pathlib import Path
-from cube_eval import SOLVED, move
+from cube.eval import SOLVED, move
 
-folder = Path(__file__).parent / 'data/cube_random_1000'
+folder = Path(__file__).resolve().parents[1] / 'data/cube_random_1000'
 rows = [json.loads(line) for line in (folder / 'all.jsonl').read_text().splitlines()]
 meta = json.loads((folder / 'meta.json').read_text())
 assert len(rows) == len({r['state'] for r in rows}) == len({r['id'] for r in rows}) == 1000

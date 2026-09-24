@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Small-set supervised overfit experiment; NOT held-out cube evaluation.
-Uses the same torch/transformers environment as cube_smoke.py.
+Uses the same torch/transformers environment as cube/smoke.py.
 Only state text enters the model; targets use one verified expert action.
 """
 import argparse
@@ -11,7 +11,7 @@ from pathlib import Path
 import time
 
 import torch
-from cube_smoke import ACTIONS, action_logits
+from cube.smoke import ACTIONS, action_logits
 
 
 def read_data(path):

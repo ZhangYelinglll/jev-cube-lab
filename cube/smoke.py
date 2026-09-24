@@ -2,8 +2,8 @@
 """Qwen3.5-0.8B-Base + 18-action head: one GPU training smoke test.
 
 Python >=3.10; install CUDA-enabled torch and transformers==5.3.0.
-python cube_smoke.py --model /path/to/Qwen3.5-0.8B-Base
-python cube_smoke.py --self-test  # tiny random CPU model; no downloads
+python -m cube.smoke --model /path/to/Qwen3.5-0.8B-Base
+python -m cube.smoke --self-test  # tiny random CPU model; no downloads
 No weights are saved or uploaded. This is NOT a cube-solving benchmark.
 """
 import argparse

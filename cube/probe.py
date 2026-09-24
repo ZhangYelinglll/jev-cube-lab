@@ -7,9 +7,9 @@ import random
 import time
 from pathlib import Path
 import torch
-from cube_grpo import collect_groups, load_agent
-from cube_eval import distances_to_goal, make_cases
-from cube_train import read_data
+from cube.grpo import collect_groups, load_agent
+from cube.eval import distances_to_goal, make_cases
+from cube.train import read_data
 
 
 def summarize(groups):

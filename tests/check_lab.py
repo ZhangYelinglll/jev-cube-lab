@@ -1,5 +1,5 @@
-"""Offline boundary checks: uv run python check_cube_lab.py."""
-from cube_server import MOVES, make_payload, validate_answer
+"""Offline boundary checks: uv run python -m tests.check_lab."""
+from cube.server import MOVES, make_payload, validate_answer
 
 faces = {f: [f] * 9 for f in 'URFDLB'}
 payload = make_payload({'faces': faces, 'history': [], 'scramble': 'SECRET'})

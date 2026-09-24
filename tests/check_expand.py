@@ -1,10 +1,10 @@
 """No GPU needed: verify full-trajectory expansion and unchanged original labels."""
 import json
 from pathlib import Path
-from cube_eval import SOLVED, move, distances_to_goal
-from cube_expand import expand
+from cube.eval import SOLVED, move, distances_to_goal
+from cube.expand import expand
 
-rows = [json.loads(s) for s in (Path(__file__).parent / 'data/cube_shallow_256.jsonl').read_text().splitlines()]
+rows = [json.loads(s) for s in (Path(__file__).resolve().parents[1] / 'data/cube_shallow_256.jsonl').read_text().splitlines()]
 expanded, report = expand(rows)
 lookup = {r['state']: r for r in expanded}
 assert len(lookup) == len(expanded) > len(rows)

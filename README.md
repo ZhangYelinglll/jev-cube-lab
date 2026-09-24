@@ -27,20 +27,20 @@ git clone https://github.com/ZhangYelinglll/jev-cube-lab.git
 cd jev-cube-lab
 cp .env.example .env
 # 编辑 .env，填写自己的 TYPESAFE_API_KEY
-npm --prefix cube_lab ci
-npm --prefix cube_lab run build
-uv run --env-file .env python cube_server.py
+npm --prefix web ci
+npm --prefix web run build
+uv run --env-file .env python -m cube.server
 ```
 
 打开 <http://127.0.0.1:8765>。远程服务器需要监听所有网卡时：
 
 ```bash
-uv run --env-file .env python cube_server.py --host 0.0.0.0 --port 8765
+uv run --env-file .env python -m cube.server --host 0.0.0.0 --port 8765
 ```
 
 该服务没有用户认证，不要直接作为公开 API 部署；访问者可消耗服务端的 Jev API 用量。远程个人使用可选择端口转发或限制网络访问。公开源代码不要求把运行服务暴露到公网。
 
-Jev 网页会过滤立即逆操作和部分重复状态；本地 Qwen 评估没有这些过滤，因此两者成绩不能直接比较。网页显示的置信度不是还原成功率。使用细节见 [网页说明](cube_lab/README.md)。
+Jev 网页会过滤立即逆操作和部分重复状态；本地 Qwen 评估没有这些过滤，因此两者成绩不能直接比较。网页显示的置信度不是还原成功率。使用细节见 [网页说明](web/README.md)。
 
 ## 训练环境与复现
 
@@ -51,29 +51,29 @@ python -m venv .venv-train
 source .venv-train/bin/activate
 python -m pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cu124
 python -m pip install -r requirements-training.txt
-python cube_smoke.py --self-test
+python -m cube.smoke --self-test
 ```
 
 自行下载 `Qwen/Qwen3.5-0.8B`，将 `CUBE_MODEL` 指向完整的本地模型目录。实验使用非 Base 版本，模型权重不在本仓库分发，使用时遵守上游模型条款。
 
 ```bash
 export CUBE_MODEL=/path/to/Qwen3.5-0.8B
-CUDA_VISIBLE_DEVICES=0 python cube_smoke.py \
+CUDA_VISIBLE_DEVICES=0 python -m cube.smoke \
   --model "$CUBE_MODEL" --batch-size 2 --steps 1
 
-CUDA_VISIBLE_DEVICES=0 python cube_train.py \
+CUDA_VISIBLE_DEVICES=0 python -m cube.train \
   --model "$CUBE_MODEL" \
   --data data/cube_trajectories_1000.jsonl \
   --output "$HOME/cube-runs/overfit-1000" --batch-size 8 --epochs 100
 
-CUDA_VISIBLE_DEVICES=0 python cube_eval.py \
+CUDA_VISIBLE_DEVICES=0 python -m cube.eval \
   --checkpoint "$HOME/cube-runs/overfit-1000/checkpoint" \
   --data data/cube_trajectories_expanded.jsonl --seed 17 --max-steps 10
 ```
 
 注意评估命令刻意使用 **323 状态数据文件**来重建固定的 332 个验证起点，不要改为 1000 状态文件后直接比较结果。所有训练命令要求新的输出目录。
 
-GRPO、探测实验和各阶段详细流程见 [TRAINING.md](TRAINING.md)。目前 `cube_grpo.py` 的训练采样温度固定为 1.0；`cube_probe.py --temperatures ...` 只做诊断，不改变训练策略。新的课程学习、有效组补采样、关闭置信度主干梯度等方案尚未实现。
+GRPO、探测实验和各阶段详细流程见 [TRAINING.md](docs/TRAINING.md)。目前 `cube/grpo.py` 的训练采样温度固定为 1.0；`python -m cube.probe --temperatures ...` 只做诊断，不改变训练策略。新的课程学习、有效组补采样、关闭置信度主干梯度等方案尚未实现。
 
 ## 数据与结果
 
@@ -86,7 +86,7 @@ GRPO、探测实验和各阶段详细流程见 [TRAINING.md](TRAINING.md)。目�
 | `cube_trajectories_1000.jsonl` | 保留验证起点后扩充的 1000 状态 |
 | `cube_random_1000/all.jsonl` | 1000 个随机打乱 30 次的状态与完整可行解 |
 
-生成方法、字段与数据边界见 [数据说明](data/README.md)。最后一批解法长度为 18～22，**不是最短距离**，尚未拆分训练／验证集，不能直接交给当前浅层 `cube_train.py`。
+生成方法、字段与数据边界见 [数据说明](data/README.md)。最后一批解法长度为 18～22，**不是最短距离**，尚未拆分训练／验证集，不能直接交给当前浅层 `cube/train.py`。
 
 固定 332 个浅层验证起点上的单次实验记录：
 
@@ -96,37 +96,52 @@ GRPO、探测实验和各阶段详细流程见 [TRAINING.md](TRAINING.md)。目�
 | 1000 状态监督模型 | 222/332 | 66.87% |
 | 1000 状态监督模型＋20 轮 GRPO | 224/332 | 67.47% |
 
-这些结果由训练服务器运行后记录，未附权重；不是多随机种子结论，也不证明完整随机魔方的还原能力。验证集已反复使用，中间状态允许与训练集重叠。完整实验口径见 [EXPERIMENTS.md](EXPERIMENTS.md)。
+这些结果由训练服务器运行后记录，未附权重；不是多随机种子结论，也不证明完整随机魔方的还原能力。验证集已反复使用，中间状态允许与训练集重叠。完整实验口径见 [EXPERIMENTS.md](docs/EXPERIMENTS.md)。
 
 ## 检查
 
 不需要 API 密钥或 GPU 的基础检查：
 
 ```bash
-uv run python check_cube_lab.py
-python check_cube_eval.py
-python check_cube_expand.py
-python check_cube_data.py
-npm --prefix cube_lab run check
-npm --prefix cube_lab run build
+uv run python -m tests.check_lab
+python -m tests.check_eval
+python -m tests.check_expand
+python -m tests.check_data
+npm --prefix web run check
+npm --prefix web run build
 ```
 
 安装训练依赖后还可以运行真实微型 Qwen3.5 的 CPU 检查：
 
 ```bash
-OMP_NUM_THREADS=2 python check_cube_train.py
-OMP_NUM_THREADS=2 python check_cube_grpo.py
+OMP_NUM_THREADS=2 python -m tests.check_train
+OMP_NUM_THREADS=2 python -m tests.check_grpo
 ```
 
-浏览器检查见 [网页说明](cube_lab/README.md)，使用离线替身，不消耗 API。`cube_lab/evaluate.mjs` 则会真实调用 Jev，应主动运行并承担用量。
+浏览器检查见 [网页说明](web/README.md)，使用离线替身，不消耗 API。`web/evaluate.mjs` 则会真实调用 Jev，应主动运行并承担用量。
 
-## 项目导航
+## 项目结构
 
-- `cube_server.py`、`cube_lab/`：API 服务、状态模拟、页面和动画。
-- `cube_smoke.py`、`cube_train.py`：环境验证、监督训练。
-- `cube_eval.py`：独立 Python 魔方模拟与贪心还原评估。
-- `cube_grpo.py`、`cube_probe.py`：在线 RL 与采样诊断。
-- `cube_expand*.py`、`cube_lab/generate_*.mjs`：数据生成与轨迹展开。
+```text
+jev-cube-lab/
+├── cube/                 # Python 服务、训练、评估与数据处理
+│   ├── server.py         # Jev API 服务
+│   ├── smoke.py          # 模型环境验证与共享动作定义
+│   ├── train.py          # 监督训练
+│   ├── eval.py           # 魔方模拟与闭环评估
+│   ├── grpo.py           # GRPO 训练
+│   ├── probe.py          # 探索信号诊断
+│   ├── expand.py         # 专家轨迹逐步展开
+│   └── expand_1000.py    # 浅层数据扩充
+├── web/                  # 页面、动画、npm 依赖和前端检查
+│   └── tools/            # JavaScript 数据生成工具
+├── tests/                # Python 离线检查
+├── data/                 # 已发布数据与字段说明
+├── docs/                 # 训练指南与实验记录
+└── .github/workflows/    # 自动检查
+```
+
+所有 Python 命令在仓库根目录使用模块方式运行。例如，旧命令 `python cube_train.py` 改为 `python -m cube.train`，旧命令 `python cube_eval.py` 改为 `python -m cube.eval`。前端命令改为 `npm --prefix web ...`。拉取新版本时保持完整目录结构；已有模型检查点和数据格式不变。
 
 ## 参考
 

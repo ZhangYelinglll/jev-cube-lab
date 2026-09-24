@@ -1,4 +1,4 @@
-"""Local Jev cube lab. Run: uv run --env-file .env python cube_server.py"""
+"""Local Jev cube lab. Run: uv run --env-file .env python -m cube.server"""
 import argparse
 from collections import Counter
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -12,7 +12,7 @@ from urllib.parse import urlsplit
 
 import httpx
 
-ROOT = Path(__file__).parent / 'cube_lab'
+ROOT = Path(__file__).resolve().parents[1] / 'web'
 MOVES = [f + s for f in 'URFDLB' for s in ('', "'", '2')]
 FACE_NAMES = dict(zip('URFDLB', ('up', 'right', 'front', 'down', 'left', 'back')))
 

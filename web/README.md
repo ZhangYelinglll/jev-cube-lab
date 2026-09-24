@@ -9,9 +9,9 @@ Jev 根据六面状态逐步选择 18 个面转动作之一。网页展示真实
 在项目根目录的 `.env` 中设置 `TYPESAFE_API_KEY`，可选设置 `TYPESAFE_MODEL`（默认 `jev-1.13.0`）。
 
 ```bash
-npm --prefix cube_lab ci
-npm --prefix cube_lab run build
-uv run --env-file .env python cube_server.py
+npm --prefix web ci
+npm --prefix web run build
+uv run --env-file .env python -m cube.server
 ```
 
 打开 http://127.0.0.1:8765 。如果项目运行在远程服务器，请把 8765 端口转发到本机。服务默认只监听本机；密钥仅由 Python 服务读取，静态资源仅开放应用页面、样式及构建产物。
@@ -27,13 +27,13 @@ uv run --env-file .env python cube_server.py
 ## 检查
 
 ```bash
-uv run python check_cube_lab.py
-npm --prefix cube_lab run check
+uv run python -m tests.check_lab
+npm --prefix web run check
 # 启动服务后；浏览器检查使用明确标注的离线接口替身，不调用 Jev。
-cd cube_lab
+cd web
 npx playwright install chromium
 node check_browser.mjs
 # 或设置 BROWSER_BIN 指向已有 Chromium 可执行文件。
 ```
 
-`node evaluate.mjs` 会真实调用运行中的 Jev 接口，测试 U、R、F'、R U、R U F 五个状态，每轮最多 10 步，将原始响应与轨迹保存到 `data/jev_cube_smoke.json`（需在 cube_lab 目录运行）。该命令消耗 API 用量，不在普通测试中自动运行。
+`node evaluate.mjs` 会真实调用运行中的 Jev 接口，测试 U、R、F'、R U、R U F 五个状态，每轮最多 10 步，将原始响应与轨迹保存到 `data/jev_cube_smoke.json`（需在 web 目录运行）。该命令消耗 API 用量，不在普通测试中自动运行。

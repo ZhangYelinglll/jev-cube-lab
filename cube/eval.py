@@ -7,7 +7,7 @@ from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
-from cube_smoke import ACTIONS, action_logits
+from cube.smoke import ACTIONS, action_logits
 
 SOLVED = ''.join(f * 9 for f in 'URFDLB')
 # Exact facelet permutations derived from cubejs 1.3.2 cp/co/ep/eo mappings.
